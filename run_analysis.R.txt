@@ -1,0 +1,56 @@
+# Download Human Activity Recognition - Smartphone data zip file into your local HDD and extract it 
+setwd("C:/WorkingData/RK/Getting and Clean Data/WEEK-4/Data and Programs/UCI HAR Dataset/UCI HAR Dataset")
+library(data.table)
+library(reshape2)
+
+# Read Training Data, Activity and Subject
+trainingdata <- read.table("./train/X_train.txt")
+trainingactivity <- read.table("./train/y_train.txt")
+trainingsubject <- read.table("./train/subject_train.txt")
+
+# Read Test Data, Activity and Subject
+testdata <- read.table("./test/X_test.txt")
+testactivity <- read.table("./test/y_test.txt")
+testsubject <- read.table("./test/subject_test.txt")
+
+# Read Features
+features <- read.table("features.txt")
+featuresnames <- features$V2
+
+# Human Activity Data
+activitylabels <- read.table("activity_labels.txt",col.names=c("activity_id","activity_name"))
+
+# Set Appropriate Column Headers for Training and Test Datasets
+colnames(trainingactivity) <- "activity_id"
+colnames(trainingsubject) <- "subject_id"
+colnames(trainingdata) <- featuresnames
+
+colnames(testactivity) <- "activity_id"
+colnames(testsubject) <- "subject_id"
+colnames(testdata) <- featuresnames
+
+##Combine the training subject id's, the training activity id's and the training data into one dataframe
+Training_Data <- cbind(trainingsubject, trainingactivity, trainingdata)
+
+##Combine the test subject id's, the test activity id's and the test data into one dataframe
+Test_Data <- cbind(testsubject, testactivity, testdata)
+
+##Combine the test data and the train data into one dataframe
+all_data <- rbind(Training_Data,Test_Data)
+
+## Extract data from only those columns containing mean or std values
+avg_cidx <- grep("mean",names(all_data),ignore.case=TRUE)
+avg_cnames <- names(all_data)[avg_cidx]
+std_cidx <- grep("std",names(all_data),ignore.case=TRUE)
+std_cnames <- names(all_data)[std_cidx]
+avgstddata <-all_data[,c("subject_id","activity_id",avg_cnames,std_cnames)]
+
+##Merge the activities datase with the Avg/std values datase
+XMerge <- merge(activitylabels,avgstddata,by.x="activity_id",by.y="activity_id",all=TRUE)
+Xmelt <- melt(XMerge,id=c("activity_id","activity_name","subject_id"))
+
+##Cast the melted dataset according to  the average of each variable for each activity and each subject 
+Avg_data <- dcast(Xmelt,activity_id + activity_name + subject_id ~ variable,mean)
+       
+## Create a file with the new tidy dataset
+write.table(Avg_data,"./tidy_movement_data.txt", row.names = FALSE)
